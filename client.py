@@ -167,7 +167,7 @@ class FoodExpertRequiredAction(Action):
     """!Class which claims for food expert if somebody mentioned sensitive topic"""
     rank = 3
     day_limit = 4
-    hour_limit = 3
+    hour_limit = 1
 
     def __init__(self, *args, **kwargs):
         super(FoodExpertRequiredAction, self).__init__(*args, **kwargs)
