@@ -2,6 +2,7 @@
 
 import os
 import sys
+import asyncio
 from telethon import TelegramClient
 from telethon.tl.types import MessageActionChatAddUser
 from telethon.tl.functions.messages import GetAllStickersRequest
@@ -68,18 +69,18 @@ class Action():
             if getattr(self, item)(group, message):
                 return True
 
-    def action(self, group, message):
+    async def action(self, group, message):
         """!Hook which appies actions as a reaction on message
         @param group Group where message was received
         @param message Message recived in group"""
         pass
 
-    def process(self, group, message):
+    async def process(self, group, message):
         """!Checks if action should be applied and apply action
         @param group Group where message was received
         @param message Message recived in group"""
         if self.matching(group, message):
-            self.action(group, message)
+            await self.action(group, message)
 
 
 class KickingAction(Action):
@@ -121,12 +122,12 @@ class KickingAction(Action):
             return
         self.app.suspicious_users.remove(message.sender.id)
 
-    def action(self, group, message):
+    async def action(self, group, message):
         """!Kick user and remove user id from list of suspicious users
         @param group Group where message was received
         @param message Message recived in group"""
         self.log('kickin %s' % message.sender.first_name)
-        self.app.client.send_message(group, '@banofbot', reply_to=message.id)
+        await self.app.client.send_message(group, '@banofbot', reply_to=message.id)
         self.app.suspicious_users.remove(message.sender.id)
         raise InteruptActions
 
@@ -137,9 +138,13 @@ class GreetAction(Action):
 
     def __init__(self, *args, **kwargs):
         super(GreetAction, self).__init__(*args, **kwargs)
+        self.sticker = None
+
+    async def load_sticker(self):
+        """!Finds sticker which have to be used to greet user"""
         iset_id = InputStickerSetID(id=1681813578551656450, access_hash=ACCESS_HASH)
         stick_req = GetStickerSetRequest(stickerset=iset_id)
-        self.sticker = [x for x in self.app.client(stick_req).documents if x.id == 1681813578551656492][0]
+        self.sticker = [x for x in (await self.app.client(stick_req)).documents if x.id == 1681813578551656492][0]
 
     def is_just_joined(self, group, message):
         """!Used to add every newly joined users into suspicious users list
@@ -148,19 +153,21 @@ class GreetAction(Action):
         if isinstance(message.action, MessageActionChatAddUser):
             return True
 
-    def action(self, group, message):
+    async def action(self, group, message):
         """!Greet user if he just joined
         @param group Group where message was received
         @param message Message recived in group"""
+        if self.sticker is None:
+            await self.load_sticker()
         self.log("Sending in reply to %s" % message.id)
-        self.app.client.send_file(group, self.sticker, reply_to=message.id)
+        await self.app.client.send_file(group, self.sticker, reply_to=message.id)
 
 
 class FoodExpertRequiredAction(Action):
     """!Class which claims for food expert if somebody mentioned sensitive topic"""
     rank = 3
     day_limit = 4
-    hour_limit = 1
+    hour_limit = 3
 
     def __init__(self, *args, **kwargs):
         super(FoodExpertRequiredAction, self).__init__(*args, **kwargs)
@@ -204,10 +211,10 @@ class FoodExpertRequiredAction(Action):
         if not self.out_of_limit() and self.word_matched(message):
             return True
 
-    def action(self, group, message):
+    async def action(self, group, message):
         """!Claims food expert and append timestamp into list of mentions"""
         self.log('Claiming a food expert')
-        self.app.client.send_message(group, '@AliVasilchikova срочно подойдите в чат, требуется ваше экспертное мнение')
+        await self.app.client.send_message(group, '@AliVasilchikova срочно подойдите в чат, требуется ваше экспертное мнение')
         self.hour_mention_timestamps.append(int(datetime.now().strftime('%s')))
         self.day_mention_timestamps.append(int(datetime.now().strftime('%s')))
 
@@ -215,28 +222,33 @@ class FoodExpertRequiredAction(Action):
 class TelegramApp():
     """!Main app class which processing new messages and applies actions to it"""
     def __init__(self):
-        self.client = TelegramClient(USERNAME, API_ID, API_HASH)
+        self.client = None
         self.actions = []
         self.suspicious_users = SuspiciousUsers(self)
-        self.client.start()
-        self.client.connect()
-        if not self.client.is_user_authorized():
-            self.client.send_code_request(PHONE)
-            self.client.sign_in(PHONE, input('Enter the code: '))
         self.load_actions()
+
+    async def connect(self):
+        """!Connects to telegram"""
+        self.client = TelegramClient(USERNAME, API_ID, API_HASH)
+        await self.client.start()
+        await self.client.connect()
+        if not await self.client.is_user_authorized():
+            await self.client.send_code_request(PHONE)
+            await self.client.sign_in(PHONE, input('Enter the code: '))
 
     def load_actions(self):
         """!Finds all subclasses of Action class, initializes it and adds it to the list of actions"""
         for AClass in sorted([x for x in Action.__subclasses__()], key=attrgetter('rank')):
             self.actions.append(AClass(self))
 
-    def get_dialog_by_name(self, name):
+    async def get_dialog_by_name(self, name):
         """!Get all dialogs of current user and finds requested dialog by name
         @param name Title of dialog to find by
         @return dialog object if name matched"""
-        for dialog in self.client.get_dialogs():
+        for dialog in await self.client.get_dialogs():
             if dialog.name == name:
                 return dialog
+        raise Exception("dialog not found")
 
     def log(self, message):
         """!Logs events with timestamp to STDOUT
@@ -244,11 +256,11 @@ class TelegramApp():
         print("%s %s" % (datetime.now().isoformat(), message))
         sys.stdout.flush()
 
-    def get_messages(self, group, **kwargs):
+    async def get_messages(self, group, **kwargs):
         """!Gets messages list
         @param group Group object which will be to take messages from
         @return list of messages"""
-        messages = self.client.get_messages(group, **kwargs)
+        messages = sorted([x for x in await self.client.get_messages(group, **kwargs)], key=attrgetter('id'))
         return messages
 
     def get_last_id(self, messages, last_id=None):
@@ -260,44 +272,46 @@ class TelegramApp():
         else:
             return messages[0].id
 
-    def apply_actions(self, group, message):
+    async def apply_actions(self, group, message):
         """!Applies all actions to message
         @param group Group where message was received
         @param message Message recived in group"""
         for action in self.actions:
             try:
-                action.process(group, message)
+                await action.process(group, message)
             except InteruptActions:
                 break
 
-    def stop(self):
-        try:
-            self.client.disconnect()
-        except Exception:
-            pass
+    async def stop(self):
+        """!Disconnecting from telegram"""
+        if self.client is not None:
+            self.log('Disconnecting')
+            await self.client.disconnect()
 
-    def run(self):
+    async def run(self):
         """!Gets Belgorod IT dialog starting to monitor every second for new messages and applies all actions to it"""
-        belgorod_it = self.get_dialog_by_name('Belgorod IT')
-        last_id = self.get_last_id(self.get_messages(belgorod_it, limit=1))
+        await self.connect()
+        belgorod_it = await self.get_dialog_by_name('Belgorod IT')
+        last_id = self.get_last_id(await self.get_messages(belgorod_it, limit=1))
         while True:
-            messages = self.get_messages(belgorod_it, min_id=last_id, limit=100)
+            messages = await self.get_messages(belgorod_it, min_id=last_id, limit=100)
             for message in messages:
                 if message.id != last_id:
-                    self.apply_actions(belgorod_it, message)
+                    await self.apply_actions(belgorod_it, message)
             last_id = self.get_last_id(messages, last_id=last_id)
             sleep(1)
 
 while True:
-    print("Starting script")
     app = None
+    app = TelegramApp()
+    app.log("Starting script")
     try:
-        app = TelegramApp()
-        app.run()
+        ioloop = asyncio.get_event_loop()
+        ioloop.run_until_complete(app.run())
     except Exception:
-        print(traceback.format_exc())
+        app.log(traceback.format_exc())
         sleep(10)
-        print("Restarting script")
+        app.log("Restarting script")
     finally:
         if app:
-            app.stop()
+            ioloop.run_until_complete(app.stop())
