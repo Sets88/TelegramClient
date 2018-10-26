@@ -3,6 +3,7 @@
 import os
 import sys
 import asyncio
+from random import choice
 from telethon import TelegramClient
 from telethon.tl.types import MessageActionChatAddUser
 from telethon.tl.functions.messages import GetAllStickersRequest
@@ -136,15 +137,11 @@ class GreetAction(Action):
     """!Class which greets every joined user with a sticker"""
     rank = 2
 
-    def __init__(self, *args, **kwargs):
-        super(GreetAction, self).__init__(*args, **kwargs)
-        self.sticker = None
-
-    async def load_sticker(self):
+    async def get_sticker(self):
         """!Finds sticker which have to be used to greet user"""
-        iset_id = InputStickerSetID(id=1681813578551656450, access_hash=ACCESS_HASH)
+        iset_id = InputStickerSetID(id=1186758601289498627, access_hash=ACCESS_HASH)
         stick_req = GetStickerSetRequest(stickerset=iset_id)
-        self.sticker = [x for x in (await self.app.client(stick_req)).documents if x.id == 1681813578551656516][0]
+        return choice([x for x in (await self.app.client(stick_req)).documents])
 
     def is_just_joined(self, group, message):
         """!Used to add every newly joined users into suspicious users list
@@ -157,10 +154,9 @@ class GreetAction(Action):
         """!Greet user if he just joined
         @param group Group where message was received
         @param message Message recived in group"""
-        if self.sticker is None:
-            await self.load_sticker()
+        sticker = await self.get_sticker()
         self.log("Sending in reply to %s" % message.id)
-        await self.app.client.send_file(group, self.sticker, reply_to=message.id)
+        await self.app.client.send_file(group, sticker, reply_to=message.id)
 
 
 class FoodExpertRequiredAction(Action):
