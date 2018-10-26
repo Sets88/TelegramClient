@@ -144,7 +144,7 @@ class GreetAction(Action):
         """!Finds sticker which have to be used to greet user"""
         iset_id = InputStickerSetID(id=1681813578551656450, access_hash=ACCESS_HASH)
         stick_req = GetStickerSetRequest(stickerset=iset_id)
-        self.sticker = [x for x in (await self.app.client(stick_req)).documents if x.id == 1681813578551656492][0]
+        self.sticker = [x for x in (await self.app.client(stick_req)).documents if x.id == 1681813578551656516][0]
 
     def is_just_joined(self, group, message):
         """!Used to add every newly joined users into suspicious users list
