@@ -210,7 +210,7 @@ class FoodExpertRequiredAction(Action):
     async def action(self, group, message):
         """!Claims food expert and append timestamp into list of mentions"""
         self.log('Claiming a food expert')
-        await self.app.client.send_message(group, '@AliVasilchikova срочно подойдите в чат, требуется ваше экспертное мнение')
+        await self.app.client.send_message(group, '@AliVasilchikova срочно подойдите в чат, требуется ваше экспертное мнение', reply_to=message.id)
         self.hour_mention_timestamps.append(int(datetime.now().strftime('%s')))
         self.day_mention_timestamps.append(int(datetime.now().strftime('%s')))
 
