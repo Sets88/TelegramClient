@@ -1,3 +1,5 @@
+import os
+
 from datetime import timedelta, datetime
 from random import choice
 
@@ -11,8 +13,7 @@ class InteruptActions(Exception):
 
 class SuspiciousUsers():
     """!Class which contains list of suspicious users and methods to work with this list"""
-    def __init__(self, telegramapp):
-        self.app = telegramapp
+    def __init__(self):
         self.users = []
 
     def joined(self, user_id):
@@ -164,10 +165,11 @@ class KickingAction(Action):
 class GreetAction(Action):
     """!Class which greets every joined user with a sticker"""
     rank = 2
+    ACCESS_HASH = int(os.environ.get('TG_ACCESS_HASH', '0'))
 
     async def get_sticker(self):
         """!Finds sticker which have to be used to greet user"""
-        iset_id = InputStickerSetID(id=1186758601289498627, access_hash=ACCESS_HASH)
+        iset_id = InputStickerSetID(id=1186758601289498627, access_hash=self.ACCESS_HASH)
         stick_req = GetStickerSetRequest(stickerset=iset_id)
         return choice([x for x in (await self.app.client(stick_req)).documents])
 
