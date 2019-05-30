@@ -90,9 +90,10 @@ class BaseCountLimitedAction(BaseAction):
 
 class KickingAction(BaseAction):
     """!Class which helps to send to banbot potentially bad users"""
-    rank = 1
+    # Disable this action
+    rank = None
 
-    suspicious_users = set()
+    suspicious_users = None
 
     def is_too_long_named(self, group, message):
         """!Checks if full name of just joined user is longer then 150
@@ -108,6 +109,8 @@ class KickingAction(BaseAction):
         @param group Group where message was received
         @param message Message recived in group"""
         if isinstance(message.action, MessageActionChatAddUser):
+            if self.suspicious_users is None:
+                self.suspicious_users = set()
             self.suspicious_users.add(message.sender.id)
 
     def is_spammer(self, group, message):
