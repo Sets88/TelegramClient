@@ -9,7 +9,7 @@ from time import sleep
 
 from telethon import TelegramClient
 
-from actions import InteruptActions, Action
+from actions import InteruptActions, BaseAction
 
 
 API_ID = os.environ['TG_API_ID']
@@ -36,7 +36,7 @@ class TelegramApp():
 
     def load_actions(self):
         """!Finds all subclasses of Action class, initializes it and adds it to the list of actions"""
-        subclasses = Action.__subclasses__()
+        subclasses = BaseAction.__subclasses__()
         for action in subclasses:
             subclasses.extend(action.__subclasses__())
         for AClass in sorted([x for x in subclasses], key=attrgetter('rank')):

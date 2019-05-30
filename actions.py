@@ -11,9 +11,9 @@ class InteruptActions(Exception):
     """!Exception which used to break running actions"""
 
 
-class Action():
+class BaseAction():
     """!Base class for all of actions which have to be applied to every received message"""
-    rank = 0
+    rank = None
 
     def __init__(self, telegramapp):
         self.app = telegramapp
@@ -51,13 +51,12 @@ class Action():
             await self.action(group, message)
 
 
-class CountLimitedAction(Action):
-    rank = 0
-    day_limit = 0
-    hour_limit = 0
+class BaseCountLimitedAction(BaseAction):
+    day_limit = None
+    hour_limit = None
 
     def __init__(self, *args, **kwargs):
-        super(CountLimitedAction, self).__init__(*args, **kwargs)
+        super(BaseCountLimitedAction, self).__init__(*args, **kwargs)
         self.hour_limit_timestamps = []
         self.day_limit_timestamps = []
 
@@ -89,7 +88,7 @@ class CountLimitedAction(Action):
             return True
 
 
-class KickingAction(Action):
+class KickingAction(BaseAction):
     """!Class which helps to send to banbot potentially bad users"""
     rank = 1
 
@@ -139,7 +138,7 @@ class KickingAction(Action):
         raise InteruptActions
 
 
-class GreetAction(Action):
+class GreetAction(BaseAction):
     """!Class which greets every joined user with a sticker"""
     rank = 2
     ACCESS_HASH = int(os.environ.get('TG_ACCESS_HASH', '0'))
@@ -166,7 +165,7 @@ class GreetAction(Action):
         await self.app.client.send_file(group, sticker, reply_to=message.id)
 
 
-class FoodExpertRequiredAction(CountLimitedAction):
+class FoodExpertRequiredAction(BaseCountLimitedAction):
     """!Class which claims for food expert if somebody mentioned sensitive topic"""
     rank = 3
     day_limit = 4
@@ -195,7 +194,7 @@ class FoodExpertRequiredAction(CountLimitedAction):
         await self.app.client.send_message(group, '@AliVasilchikova срочно подойдите в чат, требуется ваше экспертное мнение', reply_to=message.id)
 
 
-class PlusAction(CountLimitedAction):
+class PlusAction(BaseCountLimitedAction):
     """!Class which aggrees with author of message contained + signs only and increases level of it"""
     rank = 4
     day_limit = 4
