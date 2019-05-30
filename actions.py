@@ -9,6 +9,31 @@ class InteruptActions(Exception):
     """!Exception which used to break running actions"""
 
 
+class SuspiciousUsers():
+    """!Class which contains list of suspicious users and methods to work with this list"""
+    def __init__(self, telegramapp):
+        self.app = telegramapp
+        self.users = []
+
+    def joined(self, user_id):
+        """!Adding just logged in users in the list of suspicious users if its not in list yet
+        @param user_id ID of user which have to be added in the list"""
+        if user_id not in self.users:
+            self.users.append(user_id)
+
+    def in_list(self, user_id):
+        """!Checks if user in the list
+        @param user_id ID of user which have to checked if its in list
+        @return True is user is in the list"""
+        return user_id in self.users
+
+    def remove(self, user_id):
+        """!If user is in the list will remove user from it
+        @param user_id ID of user which have to be removed from list"""
+        if user_id in self.users:
+            self.users.remove(user_id)
+
+
 class Action():
     """!Base class for all of actions which have to be applied to every received message"""
     rank = 0
