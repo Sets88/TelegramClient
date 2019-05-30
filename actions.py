@@ -11,30 +11,6 @@ class InteruptActions(Exception):
     """!Exception which used to break running actions"""
 
 
-class SuspiciousUsers():
-    """!Class which contains list of suspicious users and methods to work with this list"""
-    def __init__(self):
-        self.users = []
-
-    def joined(self, user_id):
-        """!Adding just logged in users in the list of suspicious users if its not in list yet
-        @param user_id ID of user which have to be added in the list"""
-        if user_id not in self.users:
-            self.users.append(user_id)
-
-    def in_list(self, user_id):
-        """!Checks if user in the list
-        @param user_id ID of user which have to checked if its in list
-        @return True is user is in the list"""
-        return user_id in self.users
-
-    def remove(self, user_id):
-        """!If user is in the list will remove user from it
-        @param user_id ID of user which have to be removed from list"""
-        if user_id in self.users:
-            self.users.remove(user_id)
-
-
 class Action():
     """!Base class for all of actions which have to be applied to every received message"""
     rank = 0
@@ -117,6 +93,8 @@ class KickingAction(Action):
     """!Class which helps to send to banbot potentially bad users"""
     rank = 1
 
+    suspicious_users = set()
+
     def is_too_long_named(self, group, message):
         """!Checks if full name of just joined user is longer then 150
         @param group Group where message was received
@@ -131,7 +109,7 @@ class KickingAction(Action):
         @param group Group where message was received
         @param message Message recived in group"""
         if isinstance(message.action, MessageActionChatAddUser):
-            self.app.suspicious_users.joined(message.sender.id)
+            self.suspicious_users.add(message.sender.id)
 
     def is_spammer(self, group, message):
         """!Checks if user is potential spammer if he recently joined and first his message been forwarded
@@ -139,8 +117,7 @@ class KickingAction(Action):
         @param message Message recived in group
         @return True user is a potential spammer"""
         if hasattr(message, 'fwd_from') and message.fwd_from is not None:
-            if self.app.suspicious_users.in_list(message.sender.id):
-                return True
+            return message.sender.id in self.suspicious_users
 
     def is_normal_message(self, group, message):
         """!If message not forwarded and not a user join message remove user from suspicious users list
@@ -150,7 +127,7 @@ class KickingAction(Action):
             return
         if isinstance(message.action, MessageActionChatAddUser):
             return
-        self.app.suspicious_users.remove(message.sender.id)
+        self.suspicious_users.discard(message.sender.id)
 
     async def action(self, group, message):
         """!Kick user and remove user id from list of suspicious users
@@ -158,7 +135,7 @@ class KickingAction(Action):
         @param message Message recived in group"""
         self.log('kickin %s' % message.sender.first_name)
         await self.app.client.send_message(group, '@banofbot', reply_to=message.id)
-        self.app.suspicious_users.remove(message.sender.id)
+        self.suspicious_users.discard(message.sender.id)
         raise InteruptActions
 
 

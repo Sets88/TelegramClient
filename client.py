@@ -9,7 +9,7 @@ from time import sleep
 
 from telethon import TelegramClient
 
-from actions import InteruptActions, Action, SuspiciousUsers
+from actions import InteruptActions, Action
 
 
 API_ID = os.environ['TG_API_ID']
@@ -23,7 +23,6 @@ class TelegramApp():
     def __init__(self):
         self.client = None
         self.actions = []
-        self.suspicious_users = SuspiciousUsers()
         self.load_actions()
 
     async def connect(self):
