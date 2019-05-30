@@ -39,7 +39,7 @@ class TelegramApp():
         subclasses = BaseAction.__subclasses__()
         for action in subclasses:
             subclasses.extend(action.__subclasses__())
-        for AClass in sorted([x for x in subclasses], key=attrgetter('rank')):
+        for AClass in sorted([x for x in subclasses if x.rank is not None], key=attrgetter('rank')):
             self.actions.append(AClass(self))
 
     async def get_dialog_by_name(self, name):
